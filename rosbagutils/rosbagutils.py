@@ -1,6 +1,7 @@
 from . import bagfilter, baglas, bagimg, measure_trajectory, baglas_uncertainty, utils
 from .dataset_download import azure_download, read_datasets
 from .dataset_release import index as dataset_release
+from .dataset_reverse_release import reversePointcloud as rpc
 from typing import Dict, List, Tuple, Union, Optional, Any, Callable
 
 
@@ -276,3 +277,6 @@ def getEnvInfo(
                 newTopic["appeared_in_bags"] = oldTopic["appeared_in_bags"] + 1
             envInfo["topics"][newTopic["name"]] = newTopic
     return envInfo
+
+def reversePointCloud(path, bagName, pathOut, topicName):
+    return rpc.reversePointcloud(path, bagName, pathOut, topicName)

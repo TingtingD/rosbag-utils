@@ -5,7 +5,7 @@ sys.path.append(".")  # Add rosbag utils library to path
 
 
 from rosbagutils import rosbagutils
-
+'''
 # Example 1: Get bag info
 
 bagPath = "./testdata/core_2022-11-08-23-16-59_3.bag"
@@ -36,3 +36,9 @@ topicMap["/cmu_sp1/prediction_source"] = topicMapMap
 rosbagutils.datasetRelease(
     [bagPath], "/data/home/airlab/run_3/release_test.csv", ["run_3_dataset"], topicMap, "Link_lmao"
 )
+'''
+
+# Example 4
+path_to_folder = "/data/home/airlab/run_7/bags/dataset_release_2023-05-27_19-45-17_1bfa/cmu_sp1_velodyne_cloud_key_pose"
+path_to_bag = "/data/home/airlab/run_7/bags"
+rosbagutils.reversePointCloud(path_to_folder, "reverse_pc_test", path_to_bag, "TopicNameLmao")
