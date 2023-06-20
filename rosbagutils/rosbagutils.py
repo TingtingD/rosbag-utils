@@ -2,6 +2,7 @@ from . import bagfilter, baglas, bagimg, measure_trajectory, baglas_uncertainty,
 from .dataset_download import azure_download, read_datasets
 from .dataset_release import index as dataset_release
 from .dataset_reverse_release import reversePointcloud as rpc
+from .dataset_reverse_release import reverseIMU as rIMU
 from typing import Dict, List, Tuple, Union, Optional, Any, Callable
 
 
@@ -280,3 +281,6 @@ def getEnvInfo(
 
 def reversePointCloud(path, bagName, pathOut, topicName):
     return rpc.reversePointcloud(path, bagName, pathOut, topicName)
+
+def reverseIMU(path, bagName, pathOut, topicName):
+    return rIMU.reverseIMU(path, bagName, pathOut, topicName)
