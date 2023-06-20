@@ -56,10 +56,8 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
             raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
         for idx in tqdm(range(cnt_lasfiles)):
             file_path = file_root + "/" + str(idx) + ".las"
-            #print(file_path)
             if file_path in file_paths: 
                 lasData = laspy.read(file_path)
-                #print(lasData.gps_time)
                 if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
                     has_rgb = True
                 else: 
