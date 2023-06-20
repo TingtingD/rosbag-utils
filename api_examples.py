@@ -38,17 +38,14 @@ rosbagutils.datasetRelease(
 )
 
 
-# Example 4
-path_to_folder = "/data/home/airlab/run_7/bags/dataset_release_2023-05-27_19-45-17_1bfa/cmu_sp1_velodyne_cloud_key_pose"
-path_to_bag = "/data/home/airlab/run_7/bags"
-rosbagutils.reversePointCloud(path_to_folder, "reverse_pc_test", path_to_bag, "TopicNameLmao")
-
+'''
 # Example 5
 rosbagutils.reverseIMU(
     "/data/home/airlab/Documents/Sample_dataset/results/imu/imu_data.csv",
     "reverse_imu",
     "/data/home/airlab/Documents/Sample_dataset/results",
-    "/imu"
+    "/imu", 
+    "epson"
 )
 '''
 rosbagutils.reversePointCloud(
@@ -58,3 +55,4 @@ rosbagutils.reversePointCloud(
     "/lidar", 
     "cmu_rc1_sensor_init"
 )
+'''

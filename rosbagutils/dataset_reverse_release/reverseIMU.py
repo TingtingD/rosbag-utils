@@ -19,7 +19,7 @@ bagName: the name of the output bag file
 pathOut: output path to the bag file 
 topicName: name of the topic in the bag file, starting with "/"
 '''
-def reverseIMU(path, bagName, pathOut, topicName):
+def reverseIMU(path, bagName, pathOut, topicName, frame_id):
     df = pd.read_csv(path)
 
     if topicName[0]!='/': 
@@ -47,7 +47,8 @@ def reverseIMU(path, bagName, pathOut, topicName):
             imu_msg.linear_acceleration.y = df[" lin_acc_y"][row]
             imu_msg.linear_acceleration.z = df[" lin_acc_z"][row]
 
-
+            imu_msg.header.seq = row 
+            imu_msg.header.frame_id = frame_id
             bag.write(topicName, imu_msg, timestamp)
 
             # gps_msg = NavSatFix()

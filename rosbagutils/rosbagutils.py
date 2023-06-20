@@ -282,5 +282,5 @@ def getEnvInfo(
 def reversePointCloud(path, bagName, pathOut, topicName, frame_id):
     return rpc.reversePointcloud(path, bagName, pathOut, topicName, frame_id)
 
-def reverseIMU(path, bagName, pathOut, topicName):
-    return rIMU.reverseIMU(path, bagName, pathOut, topicName)
+def reverseIMU(path, bagName, pathOut, topicName, frame_id):
+    return rIMU.reverseIMU(path, bagName, pathOut, topicName, frame_id)
