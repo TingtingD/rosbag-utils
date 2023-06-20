@@ -14,7 +14,7 @@ from tqdm import tqdm
 '''
 path: input path to a folder that contains a bunch of .las file and one timestamp file
 '''
-def reversePointcloud(path, bagName, pathOut, topicName):
+def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
     
     if topicName[0]!='/': 
         topicName = "/" + topicName
@@ -40,12 +40,22 @@ def reversePointcloud(path, bagName, pathOut, topicName):
         PointField('y', 4, PointField.FLOAT32, 1),
         PointField('z', 8, PointField.FLOAT32, 1),
     ]
+    times = []
+    with open(path + "/timestamps.txt", 'r') as f:
+        while 1:
+            time = f.readline()
+            if time == "": break
+            times.append(float(time))
+    cnt_lasfiles = len(file_paths)-1
     with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
-        for idx in tqdm(range(len(file_paths))):
+        if len(times) != cnt_lasfiles: 
+            raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
+        for idx in tqdm(range(cnt_lasfiles)):
             file_path = file_root + "/" + str(idx) + ".las"
             #print(file_path)
             if file_path in file_paths: 
                 lasData = laspy.read(file_path)
+                #print(lasData.gps_time)
                 if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
                     has_rgb = True
                 else: 
@@ -68,7 +78,11 @@ def reversePointcloud(path, bagName, pathOut, topicName):
                     cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
                 else:
                     cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
+                #timestamp = rospy.Time.from_sec(times[idx]/1e9)
                 timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
+                cloud_msg.header.stamp = timestamp
+                cloud_msg.header.seq = idx 
+                cloud_msg.header.frame_id = frame_id
                 bag.write(topicName, cloud_msg, timestamp)
 
 

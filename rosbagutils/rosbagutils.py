@@ -279,8 +279,8 @@ def getEnvInfo(
             envInfo["topics"][newTopic["name"]] = newTopic
     return envInfo
 
-def reversePointCloud(path, bagName, pathOut, topicName):
-    return rpc.reversePointcloud(path, bagName, pathOut, topicName)
+def reversePointCloud(path, bagName, pathOut, topicName, frame_id):
+    return rpc.reversePointcloud(path, bagName, pathOut, topicName, frame_id)
 
 def reverseIMU(path, bagName, pathOut, topicName):
     return rIMU.reverseIMU(path, bagName, pathOut, topicName)

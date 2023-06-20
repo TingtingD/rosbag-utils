@@ -5,7 +5,7 @@ sys.path.append(".")  # Add rosbag utils library to path
 
 
 from rosbagutils import rosbagutils
-
+'''
 # Example 1: Get bag info
 
 bagPath = "./testdata/core_2022-11-08-23-16-59_3.bag"
@@ -50,10 +50,11 @@ rosbagutils.reverseIMU(
     "/data/home/airlab/Documents/Sample_dataset/results",
     "/imu"
 )
-
+'''
 rosbagutils.reversePointCloud(
     "/data/home/airlab/Documents/Sample_dataset/results/lidar",
     "reverse_lidar",
     "/data/home/airlab/Documents/Sample_dataset/results",
-    "/lidar"
+    "/lidar", 
+    "cmu_rc1_sensor_init"
 )
