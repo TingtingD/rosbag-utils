@@ -29,7 +29,7 @@ def reverseImage(path, topicName, frame_id=None):
     br = CvBridge()
     pub = rospy.Publisher(topicName, Image, queue_size=5)
 
-    rospy.init_node("mynode")
+    rospy.init_node(topicName[1:] + "Node")
     count = 0
     with open(path+'/timestamps.txt', 'r') as f:
         lines = f.readlines()
@@ -62,4 +62,4 @@ def reverseImage(path, topicName, frame_id=None):
 
 if __name__ == '__main__':
     folder = "/data/home/tianhao/datasets/SubT/2021-05-25/bags/auto/1/cam_dropcam_drop"
-    reverseImage(folder, None, None, "/uav_image_drop", None)
+    reverseImage(folder, "/uav_image_drop", None)

@@ -7,7 +7,6 @@ import numpy as np
 import laspy
 import time
 import os
-from .. import utils
 import random
 from tqdm import tqdm 
 
@@ -44,20 +43,23 @@ def reversePointcloud(path, topicName, frame_id=None):
         PointField('y', 4, PointField.FLOAT32, 1),
         PointField('z', 8, PointField.FLOAT32, 1),
     ]
-    times = []
+    timestamps = []
     with open(path + "/timestamps.txt", 'r') as f:
         while 1:
-            time = f.readline()
-            if time == "": break
-            times.append(float(time))
+            line = f.readline()
+            line = line[:-1]
+            sec = int(line[:-9])
+            nsec = int(line[-9:])
+            timestamp = rospy.Time(sec, nsec)
+            timestamps.append(timestamp)
     cnt_lasfiles = len(file_paths)-1
     
     first_flag = True
     pub = rospy.Publisher(topicName, pc2, queue_size=5)
-    rospy.init_node("mynode")
+    rospy.init_node(topicName[1:] + "Node")
 
     #with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
-    if len(times) != cnt_lasfiles: 
+    if len(timestamps) != cnt_lasfiles: 
         raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
     for idx in tqdm(range(cnt_lasfiles)):
         if rospy.is_shutdown():
@@ -86,8 +88,8 @@ def reversePointcloud(path, topicName, frame_id=None):
                 cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
             else:
                 cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
-            #timestamp = rospy.Time.from_sec(times[idx]/1e9)
-            timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
+
+            timestamp = timestamps[idx]
             cloud_msg.header.stamp = timestamp
             cloud_msg.header.seq = idx 
             if frame_id is not None:
@@ -103,3 +105,6 @@ def reversePointcloud(path, topicName, frame_id=None):
             pub.publish(cloud_msg)
             #bag.write(topicName, cloud_msg, timestamp)
 
+if __name__ == '__main__':
+    folder = "/data/home/airlab/Documents/Sample_dataset/results/lidar"
+    reversePointcloud(folder, "/lidar", None)

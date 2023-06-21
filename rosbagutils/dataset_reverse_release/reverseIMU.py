@@ -4,13 +4,12 @@ import json
 import yaml
 import subprocess
 import traceback
-from .. import utils
-import random
 import numpy as np
 import math
 import pandas as pd 
 from sensor_msgs.msg import Imu, NavSatFix
 from tqdm import tqdm 
+import os
 
 '''
 reverseIMU: csv file with imu data format => .bag file 
@@ -20,20 +19,27 @@ pathOut: output path to the bag file
 topicName: name of the topic in the bag file, starting with "/"
 '''
 def reverseIMU(path, topicName, frame_id=None):
+    for root, directories, files in os.walk(path):
+        for file in files:
+            path = os.path.join(root, file)
     df = pd.read_csv(path)
 
     if topicName[0]!='/': 
         topicName = "/" + topicName
 
     first_flag = True
-    pub = rospy.Publisher(topicName, Imu, queue_size=5)
-    rospy.init_node("mynode")
+    pub = rospy.Publisher(topicName, Imu, queue_size=100)
+    rospy.init_node(topicName[1:] + "Node")
 
     for row in tqdm(range(df.shape[0])):
         if rospy.is_shutdown():
             break
 
-        timestamp = rospy.Time.from_sec(df['timestamp'][row]/1e9)
+        line = str(df['timestamp'][row])
+        sec = int(line[:-9])
+        nsec = int(line[-9:])
+        timestamp = rospy.Time(sec, nsec)
+
         imu_msg = Imu()
         imu_msg.header.stamp = timestamp
 
@@ -62,6 +68,7 @@ def reverseIMU(path, topicName, frame_id=None):
             prev_time = timestamp
         else:
             rospy.sleep((timestamp-prev_time).to_sec())
+            #print(timestamp, " ", prev_time, " ", timestamp-prev_time, " ", (timestamp-prev_time).to_sec())
             prev_time = timestamp
 
         pub.publish(imu_msg)
@@ -74,3 +81,7 @@ def reverseIMU(path, topicName, frame_id=None):
         # Populate the data elements for GPS
 
         # bag.write("/gps", gps_msg, timestamp)
+
+if __name__ == '__main__':
+    folder = "/data/home/airlab/Documents/Sample_dataset/results/imu"
+    reverseIMU(folder, "/imu", None)
