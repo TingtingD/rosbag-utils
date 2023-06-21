@@ -14,16 +14,13 @@ import cv2
 '''
 reverseImage: 
 path: a folder with .png images and a timestamps.txt file 
-pathOut: output path to the bag file 
-topicName: name of the topic in the bag file, starting with "/"
+topicName: name of the topic to publish
 '''
 
 
 def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
-    # df = pd.read_csv(path)
     file_paths = [os.path.join(path, x)
                   for x in os.listdir(path) if x.endswith('.png')]
-    file_paths = sorted(file_paths)
     first_flag = True
 
     if topicName[0] != '/':
@@ -41,24 +38,22 @@ def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
             if rospy.is_shutdown():
                 break
             print("frame: ", count)
-            count += 1
-            # print(line[:-1])
-            line = line[:-1]
-            sec = line[:-9]
-            nsec = line[-9:]
 
-            timestamp = rospy.Time(int(line[:-9]), int(line[-9:]))
-            # print(timestamp,'\n')
+            line = line[:-1]
+            sec = int(line[:-9])
+            nsec = int(line[-9:])
+            timestamp = rospy.Time(sec, nsec)
 
             if first_flag:
                 first_flag = False
                 prev_time = timestamp
             else:
-                print('time difference:', (timestamp-prev_time).to_sec())
+                # print('time difference:', (timestamp-prev_time).to_sec())
                 rospy.sleep((timestamp-prev_time).to_sec())
                 prev_time = timestamp
 
-            cv2image = cv2.imread(file_path)
+            cv2image = cv2.imread(path+'/'+str(count)+'.png')
+            count += 1
             image_msg = br.cv2_to_imgmsg(cv2image)
             image_msg.header.stamp = timestamp
             if frame_id is not None:
@@ -69,4 +64,4 @@ def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
 
 if __name__ == '__main__':
     folder = "/data/home/tianhao/datasets/SubT/2021-05-25/bags/auto/1/cam_dropcam_drop"
-    reverseImage(folder, None, None, "/uav_image_drop")
+    reverseImage(folder, None, None, "/uav_image_drop", None)
