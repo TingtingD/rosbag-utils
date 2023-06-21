@@ -18,7 +18,7 @@ bagName: the name of the output bag file
 pathOut: output path to the bag file 
 topicName: name of the topic in the bag file, starting with "/"
 '''
-def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
+def reversePointcloud(path, topicName, frame_id=None):
     
     if topicName[0]!='/': 
         topicName = "/" + topicName
@@ -51,39 +51,55 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
             if time == "": break
             times.append(float(time))
     cnt_lasfiles = len(file_paths)-1
-    with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
-        if len(times) != cnt_lasfiles: 
-            raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
-        for idx in tqdm(range(cnt_lasfiles)):
-            file_path = file_root + "/" + str(idx) + ".las"
-            if file_path in file_paths: 
-                lasData = laspy.read(file_path)
-                if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
-                    has_rgb = True
-                else: 
-                    has_rgb = False
-                x_length = len(lasData.x)
-                if has_rgb:
-                    cloud_points = np.zeros((x_length, 4), np.int32)
-                else:
-                    cloud_points = np.zeros((x_length, 3), np.int32)
-                for i in range(x_length):
-                    if has_rgb:
-                        rgb_value = (lasData.red[i]<<16) + (lasData.green[i]<<8) + (lasData.blue[i])
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], rgb_value]
-                    else:
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i]]
+    
+    first_flag = True
+    pub = rospy.Publisher(topicName, pc2, queue_size=5)
+    rospy.init_node("mynode")
 
-                header = Header()
-                #laspy.LasHeader(version="1.3", point_format=3)
+    #with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
+    if len(times) != cnt_lasfiles: 
+        raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
+    for idx in tqdm(range(cnt_lasfiles)):
+        if rospy.is_shutdown():
+                break
+        file_path = file_root + "/" + str(idx) + ".las"
+        if file_path in file_paths: 
+            lasData = laspy.read(file_path)
+            if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
+                has_rgb = True
+            else: 
+                has_rgb = False
+            x_length = len(lasData.x)
+            if has_rgb:
+                cloud_points = np.zeros((x_length, 4), np.int32)
+            else:
+                cloud_points = np.zeros((x_length, 3), np.int32)
+            for i in range(x_length):
                 if has_rgb:
-                    cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
+                    rgb_value = (lasData.red[i]<<16) + (lasData.green[i]<<8) + (lasData.blue[i])
+                    cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], rgb_value]
                 else:
-                    cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
-                #timestamp = rospy.Time.from_sec(times[idx]/1e9)
-                timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
-                cloud_msg.header.stamp = timestamp
-                cloud_msg.header.seq = idx 
+                    cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i]]
+
+            header = Header()
+            if has_rgb:
+                cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
+            else:
+                cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
+            #timestamp = rospy.Time.from_sec(times[idx]/1e9)
+            timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
+            cloud_msg.header.stamp = timestamp
+            cloud_msg.header.seq = idx 
+            if frame_id is not None:
                 cloud_msg.header.frame_id = frame_id
-                bag.write(topicName, cloud_msg, timestamp)
+
+            if first_flag:
+                first_flag = False
+                prev_time = timestamp
+            else:
+                rospy.sleep((timestamp-prev_time).to_sec())
+                prev_time = timestamp
+
+            pub.publish(cloud_msg)
+            #bag.write(topicName, cloud_msg, timestamp)
 

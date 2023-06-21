@@ -18,7 +18,7 @@ topicName: name of the topic to publish
 '''
 
 
-def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
+def reverseImage(path, topicName, frame_id=None):
     file_paths = [os.path.join(path, x)
                   for x in os.listdir(path) if x.endswith('.png')]
     first_flag = True
@@ -37,7 +37,6 @@ def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
         for line, file_path in zip(lines, file_paths):
             if rospy.is_shutdown():
                 break
-            print("frame: ", count)
 
             line = line[:-1]
             sec = int(line[:-9])
@@ -48,7 +47,6 @@ def reverseImage(path, bagName, pathOut, topicName, frame_id=None):
                 first_flag = False
                 prev_time = timestamp
             else:
-                # print('time difference:', (timestamp-prev_time).to_sec())
                 rospy.sleep((timestamp-prev_time).to_sec())
                 prev_time = timestamp
 

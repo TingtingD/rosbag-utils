@@ -19,41 +19,58 @@ bagName: the name of the output bag file
 pathOut: output path to the bag file 
 topicName: name of the topic in the bag file, starting with "/"
 '''
-def reverseIMU(path, bagName, pathOut, topicName, frame_id):
+def reverseIMU(path, topicName, frame_id=None):
     df = pd.read_csv(path)
 
     if topicName[0]!='/': 
         topicName = "/" + topicName
 
-    with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
-        for row in tqdm(range(df.shape[0])):
-            timestamp = rospy.Time.from_sec(df['timestamp'][row]/1e9)
-            imu_msg = Imu()
-            imu_msg.header.stamp = timestamp
+    first_flag = True
+    pub = rospy.Publisher(topicName, Imu, queue_size=5)
+    rospy.init_node("mynode")
 
-            # Populate the data elements for IMU
-            # e.g. imu_msg.angular_velocity.x = df['a_v_x'][row]
+    for row in tqdm(range(df.shape[0])):
+        if rospy.is_shutdown():
+            break
+
+        timestamp = rospy.Time.from_sec(df['timestamp'][row]/1e9)
+        imu_msg = Imu()
+        imu_msg.header.stamp = timestamp
+
+        # Populate the data elements for IMU
+        # e.g. imu_msg.angular_velocity.x = df['a_v_x'][row]
             
-            imu_msg.orientation.x = df[" q_x"][row]
-            imu_msg.orientation.y = df[" q_y"][row]
-            imu_msg.orientation.z = df[" q_z"][row]
-            imu_msg.orientation.w = df[" q_w"][row]
+        imu_msg.orientation.x = df[" q_x"][row]
+        imu_msg.orientation.y = df[" q_y"][row]
+        imu_msg.orientation.z = df[" q_z"][row]
+        imu_msg.orientation.w = df[" q_w"][row]
 
-            imu_msg.angular_velocity.x = df[" ang_vel_x"][row]
-            imu_msg.angular_velocity.y = df[" ang_vel_y"][row]
-            imu_msg.angular_velocity.z = df[" ang_vel_z"][row]
+        imu_msg.angular_velocity.x = df[" ang_vel_x"][row]
+        imu_msg.angular_velocity.y = df[" ang_vel_y"][row]
+        imu_msg.angular_velocity.z = df[" ang_vel_z"][row]
 
-            imu_msg.linear_acceleration.x = df[" lin_acc_x"][row]
-            imu_msg.linear_acceleration.y = df[" lin_acc_y"][row]
-            imu_msg.linear_acceleration.z = df[" lin_acc_z"][row]
+        imu_msg.linear_acceleration.x = df[" lin_acc_x"][row]
+        imu_msg.linear_acceleration.y = df[" lin_acc_y"][row]
+        imu_msg.linear_acceleration.z = df[" lin_acc_z"][row]
 
-            imu_msg.header.seq = row 
+        imu_msg.header.seq = row 
+        if frame_id is not None: 
             imu_msg.header.frame_id = frame_id
-            bag.write(topicName, imu_msg, timestamp)
 
-            # gps_msg = NavSatFix()
-            # gps_msg.header.stamp = timestamp
+        if first_flag:
+            first_flag = False
+            prev_time = timestamp
+        else:
+            rospy.sleep((timestamp-prev_time).to_sec())
+            prev_time = timestamp
 
-            # Populate the data elements for GPS
+        pub.publish(imu_msg)
 
-            # bag.write("/gps", gps_msg, timestamp)
+        #bag.write(topicName, imu_msg, timestamp)
+
+        # gps_msg = NavSatFix()
+        # gps_msg.header.stamp = timestamp
+
+        # Populate the data elements for GPS
+
+        # bag.write("/gps", gps_msg, timestamp)
