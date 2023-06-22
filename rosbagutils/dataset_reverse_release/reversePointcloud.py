@@ -1,16 +1,11 @@
 import rosbag
-import rospy 
+import rospy
 import sensor_msgs.point_cloud2 as pc2
-from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
-import numpy as np
 import laspy
-from time import sleep
 import os
-from .. import utils
-import random
-from tqdm import tqdm 
+from tqdm import tqdm
 
 '''
 path: input path to a folder that contains a bunch of .las file and one timestamp file
@@ -33,23 +28,21 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
             file_path = os.path.join(root, file)
             file_paths.append(file_path)
     
-    rospy.init_node("create_cloud_xyzrgb")
-
-    pub = rospy.Publisher("point_cloud2", PointCloud2, queue_size=2)
-    
     # read from .las file and timestamp
     fields_with_rgb = [
         PointField("x", 0, PointField.FLOAT32, 1),
-        PointField('y', 4, PointField.FLOAT32, 1),
-        PointField('z', 8, PointField.FLOAT32, 1),
-        PointField('intensity', 12, PointField.FLOAT32, 1),
-        PointField('rgba', 16, PointField.UINT32, 1)
+        PointField("y", 4, PointField.FLOAT32, 1),
+        PointField("z", 8, PointField.FLOAT32, 1),
+        PointField("intensity", 12, PointField.FLOAT32, 1),
+        PointField('color_r', 16, PointField.UINT8, 1),
+        PointField('color_g', 17, PointField.UINT8, 1),
+        PointField('color_b', 18, PointField.UINT8, 1)
     ]
     fields = [
         PointField("x", 0, PointField.FLOAT32, 1),
-        PointField('y', 4, PointField.FLOAT32, 1),
-        PointField('z', 8, PointField.FLOAT32, 1),
-        PointField('intensity', 12, PointField.FLOAT32, 1)
+        PointField("y", 4, PointField.FLOAT32, 1),
+        PointField("z", 8, PointField.FLOAT32, 1),
+        PointField("intensity", 12, PointField.FLOAT32, 1)
     ]
     times = []
     with open(path + "/timestamps.txt", 'r') as f:
@@ -74,37 +67,21 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
                 else: 
                     has_rgb = False
                 x_length = len(lasData.x)
-                if has_rgb:
-                    cloud_points = np.zeros((x_length, 5), np.int32)
-                else:
-                    cloud_points = np.zeros((x_length, 4), np.int32)
+                cloud_points = []
                 for i in range(x_length):
                     if has_rgb:
-                        rgb_value = (lasData.red[i]<<16) + (lasData.green[i]<<8) + (lasData.blue[i])
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i], rgb_value]
+                        cloud_points.append([lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i], lasData.red[i], lasData.green[i], lasData.blue[i]])
                     else:
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i]]
-                    print(str(lasData.x[i]) + "\t" + str(lasData.y[i]) + "\t" + str(lasData.z[i]))
+                        cloud_points.append([lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i]])
 
                 header = Header()
-                #laspy.LasHeader(version="1.3", point_format=3)
                 if has_rgb:
-                    cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
+                    cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points)
                 else:
-                    cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
-                #timestamp = rospy.Time.from_sec(times[idx]/1e9)
+                    cloud_msg = pc2.create_cloud(header, fields, cloud_points)
                 timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
                 cloud_msg.header.stamp = timestamp
                 cloud_msg.header.seq = idx 
                 cloud_msg.header.frame_id = frame_id
-                # print(str(cloud_msg.is_dense) + "\t" + str(cloud_msg.point_step) + "\t" + str(cloud_msg.row_step))
-                # cloud_msg.is_dense = True
-                # cloud_msg.point_step = 20
-                # cloud_msg.row_step = 20 * len(lasData.x)
                 
                 bag.write(topicName, cloud_msg, timestamp)
-                pub.publish(cloud_msg)
-                rospy.sleep(1.0)
-                # sleep(1)
-        bag.close()
-
