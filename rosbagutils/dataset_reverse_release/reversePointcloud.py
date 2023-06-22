@@ -1,11 +1,12 @@
 import rosbag
 import rospy 
 import sensor_msgs.point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
 import numpy as np
 import laspy
-import time
+from time import sleep
 import os
 from .. import utils
 import random
@@ -32,23 +33,31 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
             file_path = os.path.join(root, file)
             file_paths.append(file_path)
     
+    rospy.init_node("create_cloud_xyzrgb")
+
+    pub = rospy.Publisher("point_cloud2", PointCloud2, queue_size=2)
+    
     # read from .las file and timestamp
     fields_with_rgb = [
         PointField("x", 0, PointField.FLOAT32, 1),
         PointField('y', 4, PointField.FLOAT32, 1),
         PointField('z', 8, PointField.FLOAT32, 1),
-        PointField('rgba', 12, PointField.UINT32, 1),
+        PointField('intensity', 12, PointField.FLOAT32, 1),
+        PointField('rgba', 16, PointField.UINT32, 1)
     ]
     fields = [
         PointField("x", 0, PointField.FLOAT32, 1),
         PointField('y', 4, PointField.FLOAT32, 1),
         PointField('z', 8, PointField.FLOAT32, 1),
+        PointField('intensity', 12, PointField.FLOAT32, 1)
     ]
     times = []
     with open(path + "/timestamps.txt", 'r') as f:
         while 1:
             time = f.readline()
-            if time == "": break
+            if time == "":
+                f.close()
+                break    
             times.append(float(time))
     cnt_lasfiles = len(file_paths)-1
     with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
@@ -56,6 +65,8 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
             raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
         for idx in tqdm(range(cnt_lasfiles)):
             file_path = file_root + "/" + str(idx) + ".las"
+            if rospy.is_shutdown():
+                break
             if file_path in file_paths: 
                 lasData = laspy.read(file_path)
                 if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
@@ -64,15 +75,16 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
                     has_rgb = False
                 x_length = len(lasData.x)
                 if has_rgb:
-                    cloud_points = np.zeros((x_length, 4), np.int32)
+                    cloud_points = np.zeros((x_length, 5), np.int32)
                 else:
-                    cloud_points = np.zeros((x_length, 3), np.int32)
+                    cloud_points = np.zeros((x_length, 4), np.int32)
                 for i in range(x_length):
                     if has_rgb:
                         rgb_value = (lasData.red[i]<<16) + (lasData.green[i]<<8) + (lasData.blue[i])
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], rgb_value]
+                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i], rgb_value]
                     else:
-                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i]]
+                        cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i]]
+                    print(str(lasData.x[i]) + "\t" + str(lasData.y[i]) + "\t" + str(lasData.z[i]))
 
                 header = Header()
                 #laspy.LasHeader(version="1.3", point_format=3)
@@ -85,5 +97,14 @@ def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
                 cloud_msg.header.stamp = timestamp
                 cloud_msg.header.seq = idx 
                 cloud_msg.header.frame_id = frame_id
+                # print(str(cloud_msg.is_dense) + "\t" + str(cloud_msg.point_step) + "\t" + str(cloud_msg.row_step))
+                # cloud_msg.is_dense = True
+                # cloud_msg.point_step = 20
+                # cloud_msg.row_step = 20 * len(lasData.x)
+                
                 bag.write(topicName, cloud_msg, timestamp)
+                pub.publish(cloud_msg)
+                rospy.sleep(1.0)
+                # sleep(1)
+        bag.close()
 
