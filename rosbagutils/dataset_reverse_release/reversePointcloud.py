@@ -1,14 +1,11 @@
 import rosbag
-import rospy 
+import rospy
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
-import numpy as np
 import laspy
-import time
 import os
-import random
-from tqdm import tqdm 
+from tqdm import tqdm
 
 '''
 path: input path to a folder that contains a bunch of .las file and one timestamp file
@@ -17,7 +14,7 @@ bagName: the name of the output bag file
 pathOut: output path to the bag file 
 topicName: name of the topic in the bag file, starting with "/"
 '''
-def reversePointcloud(path, topicName, frame_id=None):
+def reversePointcloud(path, bagName, pathOut, topicName, frame_id):
     
     if topicName[0]!='/': 
         topicName = "/" + topicName
@@ -34,77 +31,57 @@ def reversePointcloud(path, topicName, frame_id=None):
     # read from .las file and timestamp
     fields_with_rgb = [
         PointField("x", 0, PointField.FLOAT32, 1),
-        PointField('y', 4, PointField.FLOAT32, 1),
-        PointField('z', 8, PointField.FLOAT32, 1),
-        PointField('rgba', 12, PointField.UINT32, 1),
+        PointField("y", 4, PointField.FLOAT32, 1),
+        PointField("z", 8, PointField.FLOAT32, 1),
+        PointField("intensity", 12, PointField.FLOAT32, 1),
+        PointField('color_r', 16, PointField.UINT8, 1),
+        PointField('color_g', 17, PointField.UINT8, 1),
+        PointField('color_b', 18, PointField.UINT8, 1)
     ]
     fields = [
         PointField("x", 0, PointField.FLOAT32, 1),
-        PointField('y', 4, PointField.FLOAT32, 1),
-        PointField('z', 8, PointField.FLOAT32, 1),
+        PointField("y", 4, PointField.FLOAT32, 1),
+        PointField("z", 8, PointField.FLOAT32, 1),
+        PointField("intensity", 12, PointField.FLOAT32, 1)
     ]
-    timestamps = []
+    times = []
     with open(path + "/timestamps.txt", 'r') as f:
         while 1:
-            line = f.readline()
-            line = line[:-1]
-            sec = int(line[:-9])
-            nsec = int(line[-9:])
-            timestamp = rospy.Time(sec, nsec)
-            timestamps.append(timestamp)
+            time = f.readline()
+            if time == "":
+                f.close()
+                break    
+            times.append(float(time))
     cnt_lasfiles = len(file_paths)-1
-    
-    first_flag = True
-    pub = rospy.Publisher(topicName, pc2, queue_size=5)
-    rospy.init_node(topicName[1:] + "Node")
-
-    #with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
-    if len(timestamps) != cnt_lasfiles: 
-        raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
-    for idx in tqdm(range(cnt_lasfiles)):
-        if rospy.is_shutdown():
+    with rosbag.Bag(pathOut + "/" + bagName + ".bag", 'w') as bag:
+        if len(times) != cnt_lasfiles: 
+            raise Exception("Number of Time Stamps is Not Equal to Number of Las Files")
+        for idx in tqdm(range(cnt_lasfiles)):
+            file_path = file_root + "/" + str(idx) + ".las"
+            if rospy.is_shutdown():
                 break
-        file_path = file_root + "/" + str(idx) + ".las"
-        if file_path in file_paths: 
-            lasData = laspy.read(file_path)
-            if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
-                has_rgb = True
-            else: 
-                has_rgb = False
-            x_length = len(lasData.x)
-            if has_rgb:
-                cloud_points = np.zeros((x_length, 4), np.int32)
-            else:
-                cloud_points = np.zeros((x_length, 3), np.int32)
-            for i in range(x_length):
+            if file_path in file_paths: 
+                lasData = laspy.read(file_path)
+                if len(lasData.red)>0 and len(lasData.green)>0 and len(lasData.blue)>0: 
+                    has_rgb = True
+                else: 
+                    has_rgb = False
+                x_length = len(lasData.x)
+                cloud_points = []
+                for i in range(x_length):
+                    if has_rgb:
+                        cloud_points.append([lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i], lasData.red[i], lasData.green[i], lasData.blue[i]])
+                    else:
+                        cloud_points.append([lasData.x[i], lasData.y[i], lasData.z[i], lasData.intensity[i]])
+
+                header = Header()
                 if has_rgb:
-                    rgb_value = (lasData.red[i]<<16) + (lasData.green[i]<<8) + (lasData.blue[i])
-                    cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i], rgb_value]
+                    cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points)
                 else:
-                    cloud_points[i] = [lasData.x[i], lasData.y[i], lasData.z[i]]
-
-            header = Header()
-            if has_rgb:
-                cloud_msg = pc2.create_cloud(header, fields_with_rgb, cloud_points.tolist())
-            else:
-                cloud_msg = pc2.create_cloud(header, fields, cloud_points.tolist())
-
-            timestamp = timestamps[idx]
-            cloud_msg.header.stamp = timestamp
-            cloud_msg.header.seq = idx 
-            if frame_id is not None:
+                    cloud_msg = pc2.create_cloud(header, fields, cloud_points)
+                timestamp = rospy.Time.from_sec(lasData.gps_time[0]/1e9)
+                cloud_msg.header.stamp = timestamp
+                cloud_msg.header.seq = idx 
                 cloud_msg.header.frame_id = frame_id
-
-            if first_flag:
-                first_flag = False
-                prev_time = timestamp
-            else:
-                rospy.sleep((timestamp-prev_time).to_sec())
-                prev_time = timestamp
-
-            pub.publish(cloud_msg)
-            #bag.write(topicName, cloud_msg, timestamp)
-
-if __name__ == '__main__':
-    folder = "/data/home/airlab/Documents/Sample_dataset/results/lidar"
-    reversePointcloud(folder, "/lidar", None)
+                
+                bag.write(topicName, cloud_msg, timestamp)
