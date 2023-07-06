@@ -8,7 +8,6 @@ import math
 import pandas as pd
 from sensor_msgs.msg import Imu, Image
 from cv_bridge import CvBridge
-from tqdm import tqdm
 import cv2
 
 '''
@@ -29,7 +28,7 @@ def reverseImage(path, topicName, frame_id=None):
     br = CvBridge()
     pub = rospy.Publisher(topicName, Image, queue_size=5)
 
-    rospy.init_node(topicName[1:] + "Node")
+    rospy.init_node("imageNode")
     count = 0
     with open(path+'/timestamps.txt', 'r') as f:
         lines = f.readlines()
@@ -55,7 +54,7 @@ def reverseImage(path, topicName, frame_id=None):
             image_msg = br.cv2_to_imgmsg(cv2image)
             image_msg.header.stamp = timestamp
             if frame_id is not None:
-                image_msg.frame_id = frame_id
+                image_msg.header.frame_id = frame_id
 
             pub.publish(image_msg)
 

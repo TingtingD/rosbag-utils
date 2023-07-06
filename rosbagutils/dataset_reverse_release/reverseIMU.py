@@ -8,20 +8,16 @@ import numpy as np
 import math
 import pandas as pd 
 from sensor_msgs.msg import Imu, NavSatFix
-from tqdm import tqdm 
 import os
 
 '''
-reverseIMU: csv file with imu data format => .bag file 
+reverseIMU: a folder that contains csv file with imu data format => .bag file 
 path: input path to the csv file that contains imu data 
-bagName: the name of the output bag file 
-pathOut: output path to the bag file 
 topicName: name of the topic in the bag file, starting with "/"
 '''
 def reverseIMU(path, topicName, frame_id=None):
-    for root, directories, files in os.walk(path):
-        for file in files:
-            path = os.path.join(root, file)
+    for file in os.listdir(path):
+        path = os.path.join(path, file)
     df = pd.read_csv(path)
 
     if topicName[0]!='/': 
@@ -29,9 +25,9 @@ def reverseIMU(path, topicName, frame_id=None):
 
     first_flag = True
     pub = rospy.Publisher(topicName, Imu, queue_size=100)
-    rospy.init_node(topicName[1:] + "Node")
+    rospy.init_node("imuNode")
 
-    for row in tqdm(range(df.shape[0])):
+    for row in range(df.shape[0]):
         if rospy.is_shutdown():
             break
 
@@ -73,14 +69,6 @@ def reverseIMU(path, topicName, frame_id=None):
 
         pub.publish(imu_msg)
 
-        #bag.write(topicName, imu_msg, timestamp)
-
-        # gps_msg = NavSatFix()
-        # gps_msg.header.stamp = timestamp
-
-        # Populate the data elements for GPS
-
-        # bag.write("/gps", gps_msg, timestamp)
 
 if __name__ == '__main__':
     folder = "/data/home/airlab/Documents/Sample_dataset/results/imu"

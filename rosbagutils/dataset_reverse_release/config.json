@@ -1,0 +1,20 @@
+{
+    "datapath": "/media/qb/T7/run_6/bags/results",
+    "folderType": {
+        "cam_0": {
+            "topicName": "/cmu_rc7/camera_1/image_raw",
+            "frame_id": "",
+            "frequency": 30
+        }, 
+        "imu": {
+            "topicName": "/cmu_rc7/imu/data",
+            "frame_id": "",
+            "frequency": 200
+        },
+        "lidar": {
+            "topicName": "/cmu_rc7/velodyne_cloud_registered_imu",
+            "frame_id": "",
+            "frequency": 10
+        }
+    }
+}
